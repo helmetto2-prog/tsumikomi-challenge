@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>積み込みチャレンジ v05</title>
+<title>積み込みチャレンジ v06</title>
 <style>
   html,body{margin:0;padding:0;height:100%;background:#2a3a2a;overflow:hidden;}
   /* ==== 全CSSは .lg- 接頭辞でスコープ（造園立志伝組込用） ==== */
@@ -126,6 +126,7 @@
   .lg-btn2{margin-top:10px;font-size:clamp(14px,3.8vw,17px);font-weight:bold;padding:9px 30px;border-radius:999px;border:none;
     background:linear-gradient(#c9d1d6,#9aa3ab);color:#334;box-shadow:0 3px 0 #6b747b,0 5px 10px rgba(0,0,0,.35);cursor:pointer;}
   .lg-btn2:active{transform:translateY(2px);box-shadow:0 1px 0 #6b747b;}
+  a.lg-btn2{display:inline-block;text-align:center;}   /* v06: 広場リンクもボタンと同じ見た目に */
   .lg-count{font-size:clamp(70px,24vw,130px);font-weight:bold;color:#ffec6e;text-shadow:0 4px 0 #a60,0 8px 16px rgba(0,0,0,.6);
     animation:lgCount .9s ease-out;}
   @keyframes lgCount{0%{transform:scale(2.2);opacity:0;}30%{transform:scale(1);opacity:1;}}
@@ -940,6 +941,13 @@ var LoadingGame = {
       FW.clear();
       ov.remove(); self2.ov=null; self2.showTitle();
     });
+    // v06: オンラインランキング（難易度つきで登録＋広場へのリンク）
+    var btnR=el('button','lg-btn2',ov); btnR.textContent='🏆 ランキングに登録';
+    btnR.addEventListener('click',function(){
+      RANK.submit(S.score, LEVELS[S.level-1].name+'・'+rank+'ランク', btnR);
+    });
+    var aR=el('a','lg-btn2',ov); aR.textContent='🌍 広場を見る';
+    aR.href=RANK.PAGE; aR.target='_blank'; aR.rel='noopener'; aR.style.textDecoration='none';
     if(this.opts.onFinish){
       this.opts.onFinish({score:S.score, items:S.items, count:S.orders,
         avgTime:Math.round(avg*10)/10, misses:S.misses, rank:rank});
@@ -968,6 +976,35 @@ var LoadingGame = {
 };
 
 // ---- ハイスコア ----
+/* ==== v06: オンラインランキング（ゲームランキング台帳GAS API・ランキング広場と共通） ==== */
+var RANK={
+  API:'https://script.google.com/macros/s/AKfycbz3yJMoui8-HX0iec4dLgW-Wk2nwBxa8t86CmGiuU9-PqqjG8PVb6emUodSweBZfID0Mw/exec',
+  PAGE:'https://helmetto2-prog.github.io/ranking-hiroba/',
+  GAME:'積み込みチャレンジ',
+  name:function(){
+    var n=''; try{ n=localStorage.getItem('zunda_rank_name')||''; }catch(e){}
+    if(!n){
+      n=(prompt('ランキングに のせる名前（12文字まで）','')||'').slice(0,12).trim();
+      if(n){ try{ localStorage.setItem('zunda_rank_name',n); }catch(e){} }
+    }
+    return n;
+  },
+  submit:function(score,extra,btn){
+    var n=this.name(); if(!n) return;
+    var self=this;
+    btn.disabled=true; btn.textContent='送信中…';
+    var fd=new URLSearchParams();
+    fd.append('action','submit'); fd.append('game',this.GAME);
+    fd.append('name',n); fd.append('score',String(Math.round(score))); fd.append('extra',extra||'');
+    fetch(this.API,{method:'POST',body:fd}).then(function(r){ return r.json(); }).then(function(d){
+      if(!d.ok) throw 0;
+      btn.textContent='✅ 登録完了！ 現在 '+d.rank+'位';
+    }).catch(function(){
+      btn.disabled=false; btn.textContent='送信失敗…もう一度';
+    });
+  }
+};
+
 var Store={
   KEY:'tsumikomi_challenge_hs',
   get:function(lv){ try{ return parseInt(localStorage.getItem(this.KEY+'_lv'+lv)||'0',10)||0; }catch(e){ return 0; } },
